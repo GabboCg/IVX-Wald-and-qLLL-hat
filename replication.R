@@ -60,6 +60,12 @@ short_interest <- read.xlsx("data/Returns_short_interest_data.xlsx",
                   mutate(log_EWSI = log(EWSI)) %>% 
                   select(Date, log_EWSI)
 
+# Compute log(EWSI) deviation from linear trend --------------------------------
+X_linear <- apply(as.matrix(rownames(short_interest)), 2, as.numeric)
+result_linear <- lm(short_interest$log_EWSI ~ X_linear)
+SII <- scale(result_linear$residual)
+
+
 # Compute cumulative returns ---------------------------------------------------
 h <- c(1, 3, 6, 12)
 
@@ -101,4 +107,49 @@ for(i in seq_along(h)){
 
 round(beta_hat, 4)
 
+# Compute fixed-regressor wild bootstrap p-values ------------------------------
+X_sink <- data.frame(cbind(GW_predictor_z, -SII)) %>% 
+          select(-log_DE, -TMS)
+
+results_sink <- lm(r_h[2:NROW(r_h),1] ~ as.matrix(X_sink[1:(NROW(X_sink)-1),]))
+epsilon_hat <- as.matrix(results_sink$residuals)
+B <- 1000
+beta_hat_tstat_star <- array(NaN, c(B, NCOL(GW_predictor) + 1, length(h)))  
+
+set.seed(10)
+lagWild <- matrix(NaN, nrow = 10000, ncol = 12)
+runif(length(lagWild), 0,1)
+
+for(b in 1:B){
+  
+  print(b)
+  u_star_b <- as.numeric(runif(NROW(r_h)-1, 0,1))
+  r_star_b <- rbind(equity_risk$r[1], mean(equity_risk$r) + epsilon_hat*u_star_b)
+  r_h_star_b <- matrix(NaN, NROW(equity_risk$r), length(h)) 
+  
+  for(j in 1:length(h)){
+    for(t in 1:(length(equity_risk$r) - (h[j] - 1))){
+     
+      r_h_star_b[t,j] <- mean(r_star_b[t:(t+(h[j]-1))]) 
+      
+    }
+  }
+  
+  
+  for(j in 1:length(h)){
+    for(i in 1:(NCOL(GW_predictor))){
+     
+      if(i <= NCOL(GW_predictor)){
+       
+        X_i_j <- as.matrix(GW_predictor_z[1:(NROW(GW_predictor_z)-1-(h[j]-1)), i])
+        Y_i_j <- as.vector(100*r_h_star_b[2:(NROW(r_h_star_b)-(h[j]-1)), j])
+        results_i_j_star_b <- newey_west(Y_i_j , X_i_j, h[j])
+        
+        beta_hat_tstat_star[b,i,j] <- results_i_j_star_b[[1]][2]/(sqrt(results_i_j_star_b[[2]][2,2])) # coef(summary(results_i_j))[, "t value"][2]
+        
+      }
+    }
+  }
+  
+}
 
