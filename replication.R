@@ -1,5 +1,5 @@
 if(!require("pacman")) install.packages("pacman")
-p_load("tidyverse", "xlsx")
+p_load("tidyverse", "xlsx", "sandwich", "lmtest", "lpirfs")
 
 GW_dataset <- read.xlsx("data/Returns_short_interest_data.xlsx", 
                         sheetName = "GW variables") 
@@ -79,22 +79,26 @@ GW_predictor_z <- apply(GW_predictor, 2, scale)
 beta_hat <- array(NaN, c(NCOL(GW_predictor) + 1, 4, length(h)))
 
 for(i in seq_along(h)){
-  for(j in 1:(ncol(GW_predictor)+2)){
+  for(j in 1:(ncol(GW_predictor))){
    
     if(j <= ncol(GW_predictor)){
       
-      X_i_j <- GW_predictor_z[1:(NROW(GW_predictor_z)-h[i]), j]
-      results_i_j <- lm(100*r_h[2:(NROW(r_h)-(h[i]-1)), i] ~ X_i_j)
-      beta_hat[j,,i] <- cbind(results_i_j$coefficients[2],
-                              coef(summary(results_i_j))[, "t value"][2],
+      X_i_j <- as.matrix(GW_predictor_z[1:(NROW(GW_predictor_z)-h[i]), j])
+      Y_i_j <- 100*r_h[2:(NROW(r_h)-(h[i]-1)), i]
+      results_i_j <- newey_west(Y_i_j , X_i_j, h[i])
+      
+      results_i_j_lm <- lm(100*r_h[2:(NROW(r_h)-(h[i]-1)), i] ~ X_i_j)
+      
+      beta_hat[j,,i] <- cbind(results_i_j[[1]][2],
+                              results_i_j[[1]][2]/(sqrt(results_i_j[[2]][2,2])), # coef(summary(results_i_j))[, "t value"][2]
                               NaN, 
-                              summary(results_i_j)$r.squared*100)
+                              summary(results_i_j_lm)$r.squared*100)
       
     } 
     
   }
 }
 
-
+round(beta_hat, 4)
 
 
