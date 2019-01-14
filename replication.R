@@ -82,7 +82,7 @@ for(i in seq_along(h)){
 # scale predictors -------------------------------------------------------------
 GW_predictor_z <- apply(GW_predictor, 2, scale) 
 
-beta_hat <- array(NaN, c(NCOL(GW_predictor) + 1, 4, length(h)))
+beta_hat <- array(NaN, c(NCOL(GW_predictor), 4, length(h)))
 
 for(i in seq_along(h)){
   for(j in 1:(ncol(GW_predictor))){
@@ -116,7 +116,7 @@ epsilon_hat <- as.matrix(results_sink$residuals)
 B <- 1000
 beta_hat_tstat_star <- array(NaN, c(B, NCOL(GW_predictor) + 1, length(h)))  
 
-set.seed(10)
+set.seed(1234)
 lagWild <- matrix(NaN, nrow = 10000, ncol = 12)
 runif(length(lagWild), 0,1)
 
@@ -153,3 +153,12 @@ for(b in 1:B){
   
 }
 
+for(j in 1:length(h)){
+  for(i in 1:(NCOL(GW_predictor))){
+   
+    beta_hat[i, 3, j] <- sum(beta_hat_tstat_star[,i,j] > beta_hat[i, 2, j])/B
+     
+  }
+}
+
+round(beta_hat, 4)
