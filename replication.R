@@ -1,5 +1,7 @@
 if(!require("pacman")) install.packages("pacman")
-p_load("tidyverse", "xlsx", "sandwich", "lmtest", "lpirfs")
+p_load("tidyverse", "xlsx", "sandwich", "lmtest")
+
+library("lpirfs")
 
 GW_dataset <- read.xlsx("data/Returns_short_interest_data.xlsx", 
                         sheetName = "GW variables") 
@@ -160,5 +162,9 @@ for(j in 1:length(h)){
      
   }
 }
+
+colnames(beta_hat) <- c("Beta", "t_stat", "p_value", "R2")
+rownames(beta_hat) <- c("DP","DY","EP","DE","RVOL","BM","NTIS",
+                        "TBL","LTY","LTR","TMS","DFY","DFR","INFL")
 
 round(beta_hat, 4)
