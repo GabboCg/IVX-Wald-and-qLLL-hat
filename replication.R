@@ -104,11 +104,39 @@ for(i in seq_along(h)){
                               summary(results_i_j_lm)$r.squared*100)
       
     } 
-    
   }
 }
 
 round(beta_hat, 2)
+
+IVX_Wald <- matrix(NaN, nrow = 2, ncol = NROW(h))
+beta_hat_SII <- array(NaN, c(1, 4, length(h)))
+
+# IVX Wald and qLL -------------------------------------------------------------
+
+source("Compute_IVX_Wald.R")
+
+for(i in seq_along(h)){
+  
+  X_i_j <- as.matrix(-SII[1:(NROW(SII)-h[i])])
+  Y_i_j <- 100*r_h[2:(NROW(r_h)-(h[i]-1)), i]
+  
+  results_i_j_lm <- lm(100*r_h[2:(NROW(r_h)-(h[i]-1)), i] ~ X_i_j)
+  results_i_j_lm_coef <- coeftest(results_i_j_lm, vcov.=NeweyWest(results_i_j_lm, lag=h[i], adjust=FALSE, verbose = TRUE, prewhite = FALSE))
+  
+  beta_hat_SII[,,i] <- cbind(results_i_j_lm_coef[2,1],
+                          results_i_j_lm_coef[2,3], 
+                          NaN, 
+                          summary(results_i_j_lm)$r.squared*100)
+  
+  IVX_results <- Compute_IVX_Wald(equity_risk$r, -SII, h[i], 0, 0.99)
+  
+  IVX_Wald[1,i] <- IVX_results[[2]]
+  IVX_Wald[2,i] <- IVX_results[[3]]
+  
+}
+
+round(IVX_Wald, 2)
 
 # Compute fixed-regressor wild bootstrap p-values ------------------------------
 X_sink <- data.frame(cbind(GW_predictor_z, -SII)) %>% 
