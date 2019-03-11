@@ -109,12 +109,14 @@ for(i in seq_along(h)){
 
 round(beta_hat, 2)
 
-IVX_Wald <- matrix(NaN, nrow = 2, ncol = NROW(h))
-beta_hat_SII <- array(NaN, c(1, 4, length(h)))
-
 # IVX Wald and qLL -------------------------------------------------------------
 
+IVX_Wald <- matrix(NaN, nrow = 2, ncol = NROW(h))
+qLL_hat <- matrix(NaN, nrow = length(h), 1)
+beta_hat_SII <- array(NaN, c(1, 4, length(h)))
+
 source("Compute_IVX_Wald.R")
+source("Compute_qLL_hat.R")
 
 for(i in seq_along(h)){
   
@@ -134,9 +136,19 @@ for(i in seq_along(h)){
   IVX_Wald[1,i] <- IVX_results[[2]]
   IVX_Wald[2,i] <- IVX_results[[3]]
   
+  y_i_j <- r_h[2:(NROW(r_h)-(h[i]-1)), i]
+  x_i_j <- as.matrix(-SII[1:(NROW(SII)-h[i])])
+  z_i_j <- matrix(1, nrow = (NROW(r_h) - h[i]), ncol = 1)
+  
+  qLL_results <- Compute_qLL_hat(y_i_j, x_i_j, z_i_j, h[i])
+  
+  qLL_hat[i] <- qLL_results[[1]]
+  
 }
 
 round(IVX_Wald, 2)
+round(qLL_hat, 2)
+
 
 # Compute fixed-regressor wild bootstrap p-values ------------------------------
 X_sink <- data.frame(cbind(GW_predictor_z, -SII)) %>% 
